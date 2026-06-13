@@ -1,0 +1,903 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="FinTrack">
+<meta name="theme-color" content="#0a0a0f">
+<title>FinTrack – My Money</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0a0f;
+    --surface: #13131a;
+    --surface2: #1c1c27;
+    --border: #2a2a3a;
+    --text: #f0f0f8;
+    --muted: #7878a0;
+    --accent: #6c63ff;
+    --accent2: #ff6584;
+    --green: #43e97b;
+    --red: #ff6b6b;
+    --yellow: #ffd93d;
+    --orange: #ff9a3c;
+    --safe-top: env(safe-area-inset-top, 0px);
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--bg); }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: calc(80px + var(--safe-bottom));
+    overscroll-behavior: none;
+  }
+  /* Header */
+  .header {
+    padding: calc(var(--safe-top) + 20px) 20px 20px;
+    background: linear-gradient(180deg, #0a0a0f 0%, transparent 100%);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  .header-inner { display: flex; justify-content: space-between; align-items: center; }
+  .app-title { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+  .app-title span { color: var(--accent); }
+  .refresh-btn {
+    width: 36px; height: 36px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; font-size: 16px;
+    transition: all 0.2s;
+  }
+  .refresh-btn:active { transform: scale(0.9); }
+  /* Nav */
+  .bottom-nav {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 0 calc(12px + var(--safe-bottom));
+    background: rgba(13,13,20,0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    display: flex;
+    z-index: 200;
+  }
+  .nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; gap: 4px;
+    cursor: pointer; padding: 4px;
+    transition: all 0.2s;
+  }
+  .nav-icon { font-size: 20px; }
+  .nav-label { font-size: 10px; color: var(--muted); font-weight: 500; }
+  .nav-item.active .nav-label { color: var(--accent); }
+  .nav-item.active .nav-icon { filter: drop-shadow(0 0 6px var(--accent)); }
+  /* Pages */
+  .page { display: none; padding: 0 16px; }
+  .page.active { display: block; }
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 18px;
+    margin-bottom: 14px;
+  }
+  .card-label {
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); letter-spacing: 1px;
+    text-transform: uppercase; margin-bottom: 8px;
+  }
+  /* Hero Balance */
+  .hero-card {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    border: 1px solid #2a4080;
+    border-radius: 22px;
+    padding: 24px;
+    margin-bottom: 14px;
+    position: relative;
+    overflow: hidden;
+  }
+  .hero-card::before {
+    content: '';
+    position: absolute;
+    top: -30px; right: -30px;
+    width: 120px; height: 120px;
+    background: radial-gradient(circle, rgba(108,99,255,0.3) 0%, transparent 70%);
+    border-radius: 50%;
+  }
+  .hero-label { font-size: 11px; color: #8899cc; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; margin-bottom: 6px; }
+  .hero-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 36px; font-weight: 600;
+    color: #fff; letter-spacing: -1px;
+    margin-bottom: 4px;
+  }
+  .hero-sub { font-size: 13px; color: #8899cc; }
+  .hero-row { display: flex; gap: 20px; margin-top: 18px; }
+  .hero-stat { flex: 1; }
+  .hero-stat-label { font-size: 10px; color: #6677aa; text-transform: uppercase; font-weight: 600; margin-bottom: 3px; }
+  .hero-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; }
+  .income-val { color: var(--green); }
+  .expense-val { color: var(--red); }
+  /* Month Tabs */
+  .month-tabs {
+    display: flex; gap: 8px; overflow-x: auto;
+    padding-bottom: 2px; margin-bottom: 14px;
+    scrollbar-width: none;
+  }
+  .month-tabs::-webkit-scrollbar { display: none; }
+  .month-tab {
+    flex-shrink: 0;
+    padding: 7px 14px;
+    border-radius: 20px;
+    font-size: 12px; font-weight: 600;
+    cursor: pointer; transition: all 0.2s;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+  }
+  .month-tab.active {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  /* Stats Row */
+  .stats-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .stat-card {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+  }
+  .stat-icon { font-size: 20px; margin-bottom: 6px; }
+  .stat-val { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; margin-bottom: 2px; }
+  .stat-lbl { font-size: 10px; color: var(--muted); font-weight: 500; }
+  /* Chart containers */
+  .chart-wrap { position: relative; height: 200px; margin-top: 12px; }
+  .chart-wrap-sm { position: relative; height: 160px; margin-top: 12px; }
+  /* Section header */
+  .section-hdr {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 10px;
+  }
+  .section-title { font-size: 15px; font-weight: 700; }
+  .see-all { font-size: 12px; color: var(--accent); font-weight: 600; cursor: pointer; }
+  /* Transaction items */
+  .txn-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .txn-item:last-child { border-bottom: none; }
+  .txn-icon {
+    width: 40px; height: 40px;
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px; flex-shrink: 0;
+  }
+  .txn-info { flex: 1; min-width: 0; }
+  .txn-merchant {
+    font-size: 13px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .txn-meta { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .txn-amount {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px; font-weight: 600; text-align: right; flex-shrink: 0;
+  }
+  .txn-date { font-size: 10px; color: var(--muted); text-align: right; margin-top: 2px; }
+  /* Category pill */
+  .cat-pill {
+    display: inline-block;
+    font-size: 9px; font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 6px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  /* Account chips */
+  .account-chip {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .account-icon { font-size: 22px; }
+  .account-name { font-size: 13px; font-weight: 600; }
+  .account-num { font-size: 11px; color: var(--muted); }
+  .account-amt { font-family: 'JetBrains Mono', monospace; font-size: 14px; font-weight: 600; margin-left: auto; }
+  /* Loading */
+  .loading { text-align: center; padding: 60px 20px; }
+  .loading-spinner {
+    width: 40px; height: 40px;
+    border: 3px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 0 auto 16px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  /* Insight cards */
+  .insight {
+    background: linear-gradient(135deg, var(--surface) 0%, var(--surface2) 100%);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 14px;
+    margin-bottom: 10px;
+    display: flex; gap: 12px; align-items: flex-start;
+  }
+  .insight-icon { font-size: 24px; flex-shrink: 0; }
+  .insight-title { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+  .insight-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  /* Progress bar */
+  .progress-bar {
+    height: 6px; background: var(--border);
+    border-radius: 3px; overflow: hidden; margin-top: 8px;
+  }
+  .progress-fill {
+    height: 100%; border-radius: 3px;
+    transition: width 0.8s ease;
+  }
+  .cat-row {
+    display: flex; align-items: center; gap: 10px;
+    margin-bottom: 12px;
+  }
+  .cat-row-icon { font-size: 16px; width: 28px; flex-shrink: 0; }
+  .cat-row-info { flex: 1; }
+  .cat-row-name { font-size: 13px; font-weight: 500; }
+  .cat-row-pct { font-size: 11px; color: var(--muted); }
+  .cat-row-amt { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 600; flex-shrink: 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-inner">
+    <div class="app-title">Fin<span>Track</span></div>
+    <div class="refresh-btn" onclick="renderAll()">↻</div>
+  </div>
+</div>
+
+<!-- Pages -->
+<div id="page-home" class="page active">
+  <div id="home-content"></div>
+</div>
+<div id="page-txn" class="page">
+  <div id="txn-content"></div>
+</div>
+<div id="page-analytics" class="page">
+  <div id="analytics-content"></div>
+</div>
+<div id="page-insights" class="page">
+  <div id="insights-content"></div>
+</div>
+
+<!-- Bottom Nav -->
+<nav class="bottom-nav">
+  <div class="nav-item active" onclick="switchPage('home',this)">
+    <span class="nav-icon">🏠</span>
+    <span class="nav-label">Home</span>
+  </div>
+  <div class="nav-item" onclick="switchPage('txn',this)">
+    <span class="nav-icon">💳</span>
+    <span class="nav-label">Transactions</span>
+  </div>
+  <div class="nav-item" onclick="switchPage('analytics',this)">
+    <span class="nav-icon">📊</span>
+    <span class="nav-label">Analytics</span>
+  </div>
+  <div class="nav-item" onclick="switchPage('insights',this)">
+    <span class="nav-icon">💡</span>
+    <span class="nav-label">Insights</span>
+  </div>
+</nav>
+
+<script>
+// ============================================================
+// RAW DATA from your Google Sheet
+// ============================================================
+const RAW = [
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:1,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:3,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:2,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:1,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:4,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:5,type:"Credit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:3,type:"Credit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:5,type:"Credit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-03-01",bank:"SBI Credit Card",cat:"Uncategorized",amt:185,type:"CC Spend",acc:"SBI CC 8706",merchant:"3RDMAINROADRAMAKRISH"},
+  {date:"2026-03-01",bank:"SBI Credit Card",cat:"Uncategorized",amt:185,type:"CC Spend",acc:"SBI CC 8706",merchant:"3RDMAINROADRAMAKRISH"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:40,type:"Debit",acc:"ICICI 890",merchant:"HYDERABADI IRAN"},
+  {date:"2026-03-01",bank:"SBI Credit Card",cat:"Uncategorized",amt:698,type:"CC Spend",acc:"SBI CC 8706",merchant:"BARGAINMARTPVTLTD"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:316,type:"Debit",acc:"ICICI 890",merchant:"DARSHAN VEGETAB"},
+  {date:"2026-03-01",bank:"ICICI Bank",cat:"Food & Dining",amt:100,type:"Debit",acc:"ICICI 890",merchant:"HAHELLAN ANUSUY"},
+  {date:"2026-03-02",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"AuraGold"},
+  {date:"2026-03-02",bank:"ICICI Bank",cat:"Personal Transfer",amt:2530,type:"Debit",acc:"ICICI 890",merchant:"Mangudi Soman"},
+  {date:"2026-03-03",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"AuraGold"},
+  {date:"2026-03-03",bank:"SBI Credit Card",cat:"Uncategorized",amt:700,type:"CC Spend",acc:"SBI CC 8706",merchant:"DRKAMAKSHIMEMORIALH"},
+  {date:"2026-03-03",bank:"SBI Credit Card",cat:"Uncategorized",amt:650,type:"CC Spend",acc:"SBI CC 8706",merchant:"DRKAMAKSHIMEMORIALH"},
+  {date:"2026-03-04",bank:"SBI Credit Card",cat:"Liquor",amt:190,type:"CC Spend",acc:"SBI CC 8706",merchant:"TASMACSHOPNO4601"},
+  {date:"2026-03-04",bank:"ICICI Bank",cat:"Personal Transfer",amt:150,type:"Debit",acc:"ICICI 890",merchant:"K T Manojan"},
+  {date:"2026-03-05",bank:"SBI Credit Card",cat:"Uncategorized",amt:300,type:"CC Spend",acc:"SBI CC 8706",merchant:"MSGREENPARK"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"AuraGold"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Receipt",amt:1000,type:"Credit",acc:"ICICI 890",merchant:"SHAUNMUGA MOORT"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Receipt",amt:1000,type:"Credit",acc:"ICICI 890",merchant:"SUDHARSAN R"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Receipt",amt:1000,type:"Credit",acc:"ICICI 890",merchant:"MANOJKUMAR GOPA"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Shopping",amt:5940,type:"Debit",acc:"ICICI 890",merchant:"Amazon Shopping"},
+  {date:"2026-03-06",bank:"SBI Credit Card",cat:"Uncategorized",amt:315,type:"CC Spend",acc:"SBI CC 8706",merchant:"sbipmopad"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Transfer",amt:225,type:"Debit",acc:"ICICI 890",merchant:"MOHAMED AND CO"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Transfer",amt:30,type:"Debit",acc:"ICICI 890",merchant:"UNIVERSAL ELECT"},
+  {date:"2026-03-06",bank:"ICICI Bank",cat:"Personal Transfer",amt:65,type:"Debit",acc:"ICICI 890",merchant:"SIVAM PUMPS SPA"},
+  {date:"2026-03-07",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"AuraGold"},
+  {date:"2026-03-07",bank:"ICICI Credit Card",cat:"Shopping",amt:2511,type:"CC Spend",acc:"ICICI CC 2002",merchant:"FLIPKART INTERN"},
+  {date:"2026-03-07",bank:"ICICI Bank",cat:"Personal Transfer",amt:350,type:"Debit",acc:"ICICI 890",merchant:"SARATHY SNACKS"},
+  {date:"2026-03-08",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"AuraGold"},
+  {date:"2026-03-08",bank:"ICICI Credit Card",cat:"Travel",amt:645.45,type:"CC Spend",acc:"ICICI CC 2002",merchant:"Make My Trip"},
+  {date:"2026-03-09",bank:"ICICI Bank",cat:"Personal Transfer",amt:3000,type:"Debit",acc:"ICICI 890",merchant:"KARTHIK G"},
+  {date:"2026-03-09",bank:"ICICI Credit Card",cat:"Insurance",amt:2172.19,type:"CC Spend",acc:"ICICI CC 2002",merchant:"POLICYBAZAAR"},
+  {date:"2026-03-10",bank:"ICICI Bank",cat:"Personal Transfer",amt:20,type:"Debit",acc:"ICICI 890",merchant:"Joy Technologie"},
+  {date:"2026-03-12",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"Joy Technologie"},
+  {date:"2026-03-12",bank:"ICICI Bank",cat:"Personal Transfer",amt:20,type:"Debit",acc:"ICICI 890",merchant:"Joy Technologie"},
+  {date:"2026-03-13",bank:"ICICI Bank",cat:"Food & Dining",amt:230,type:"Debit",acc:"ICICI 890",merchant:"HAHELLAN ANUSUY"},
+  {date:"2026-03-13",bank:"ICICI Bank",cat:"Personal Transfer",amt:45,type:"Debit",acc:"ICICI 890",merchant:"THIRUMANISELVAN"},
+  {date:"2026-03-14",bank:"SBI Credit Card",cat:"Uncategorized",amt:160,type:"CC Spend",acc:"SBI CC 8706",merchant:"MDIDRIST"},
+  {date:"2026-03-14",bank:"ICICI Bank",cat:"Personal Transfer",amt:20,type:"Debit",acc:"ICICI 890",merchant:"CHITTU G"},
+  {date:"2026-03-14",bank:"ICICI Bank",cat:"Personal Transfer",amt:130,type:"Debit",acc:"ICICI 890",merchant:"MOHD JAVED"},
+  {date:"2026-03-14",bank:"SBI Credit Card",cat:"Shopping",amt:13083,type:"CC Spend",acc:"SBI CC 8706",merchant:"AMAZON"},
+  {date:"2026-03-14",bank:"ICICI Bank",cat:"Personal Transfer",amt:260,type:"Debit",acc:"ICICI 890",merchant:"KABILESH AKILAN"},
+  {date:"2026-03-14",bank:"SBI Credit Card",cat:"Uncategorized",amt:1,type:"CC Spend",acc:"SBI CC 8706",merchant:"MDIDRIST"},
+  {date:"2026-03-15",bank:"ICICI Bank",cat:"Personal Transfer",amt:500,type:"Debit",acc:"ICICI 890",merchant:"S DHILIPKUMAR"},
+  {date:"2026-03-15",bank:"ICICI Bank",cat:"Personal Receipt",amt:1,type:"Credit",acc:"ICICI 890",merchant:"ANUPRAKASH CHAN"},
+  {date:"2026-03-16",bank:"ICICI Bank",cat:"Personal Transfer",amt:45,type:"Debit",acc:"ICICI 890",merchant:"THIRUMANISELVAN"},
+  {date:"2026-03-17",bank:"SBI Credit Card",cat:"Groceries",amt:606.83,type:"CC Spend",acc:"SBI CC 8706",merchant:"KPNFARMFRESH"},
+  {date:"2026-03-18",bank:"SBI Credit Card",cat:"Utilities",amt:2036,type:"CC Spend",acc:"SBI CC 8706",merchant:"ATRIACONVERGENCE"},
+  {date:"2026-03-18",bank:"ICICI Bank",cat:"Investments",amt:1250,type:"Debit",acc:"ICICI 890",merchant:"GROWW INVEST"},
+  {date:"2026-03-18",bank:"Axis Credit Card",cat:"Liquor",amt:1170,type:"CC Spend",acc:"Axis CC 4239",merchant:"TASMAC SHOP"},
+  {date:"2026-03-18",bank:"ICICI Bank",cat:"Personal Receipt",amt:1,type:"Credit",acc:"ICICI 890",merchant:"Mr N PERUMAL"},
+  // April
+  {date:"2026-04-06",bank:"ICICI Credit Card",cat:"Refund",amt:8.65,type:"Credit",acc:"ICICI CC 2002",merchant:"ICICI CC Refund"},
+  {date:"2026-04-08",bank:"HDFC Bank",cat:"Bank Charges",amt:708,type:"Debit",acc:"HDFC A/c 3187",merchant:"HDFC Low Balance Fee"},
+  {date:"2026-04-08",bank:"SBI Credit Card",cat:"Food & Dining",amt:20,type:"CC Spend",acc:"SBI CC 8706",merchant:"HAHELLANANUSUYA"},
+  {date:"2026-04-09",bank:"ICICI Bank",cat:"Personal Receipt",amt:633,type:"Credit",acc:"ICICI 890",merchant:"KARTHIK G"},
+  {date:"2026-04-09",bank:"SBI Credit Card",cat:"Tech/Services",amt:4123.48,type:"CC Spend",acc:"SBI CC 8706",merchant:"VIVISH TECHNOLOGIES"},
+  {date:"2026-04-10",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"IBRAHIM B"},
+  {date:"2026-04-11",bank:"ICICI Bank",cat:"Personal Transfer",amt:70,type:"Debit",acc:"ICICI 890",merchant:"KARTHIK G"},
+  {date:"2026-04-11",bank:"ICICI Credit Card",cat:"Refund",amt:590,type:"Credit",acc:"ICICI CC 2002",merchant:"ICICI CC Refund"},
+  {date:"2026-04-12",bank:"SBI Credit Card",cat:"Groceries",amt:159,type:"CC Spend",acc:"SBI CC 8706",merchant:"HOMEFRESHSUPERMARKET"},
+  {date:"2026-04-14",bank:"ICICI Bank",cat:"Personal Receipt",amt:3000,type:"Credit",acc:"ICICI 890",merchant:"SURYA VADIVALAG"},
+  {date:"2026-04-15",bank:"ICICI Credit Card",cat:"CC Bill Payment",amt:741.35,type:"Transfer",acc:"ICICI CC 1408",merchant:"ICICI CC Autopay"},
+  {date:"2026-04-15",bank:"Indian Bank",cat:"Personal Transfer",amt:1500,type:"Debit",acc:"Indian Bank 4099",merchant:"SUBRAMANIYAN"},
+  {date:"2026-04-15",bank:"ICICI Bank",cat:"Transfer",amt:7939.62,type:"Debit",acc:"ICICI 890",merchant:"Internal Transfer"},
+  {date:"2026-04-17",bank:"ICICI Bank",cat:"Personal Transfer",amt:240,type:"Debit",acc:"ICICI 890",merchant:"STEPHEN AROKIAR"},
+  {date:"2026-04-19",bank:"ICICI Credit Card",cat:"Shopping",amt:213,type:"CC Spend",acc:"ICICI CC 2002",merchant:"FLIPKART INTERN"},
+  {date:"2026-04-19",bank:"ICICI Credit Card",cat:"Quick Commerce",amt:877,type:"CC Spend",acc:"ICICI CC 2002",merchant:"BLINKIT"},
+  {date:"2026-04-20",bank:"SBI Credit Card",cat:"Food & Dining",amt:120,type:"CC Spend",acc:"SBI CC 8706",merchant:"HAHELLANANUSUYA"},
+  {date:"2026-04-20",bank:"ICICI Bank",cat:"Personal Receipt",amt:2000,type:"Credit",acc:"ICICI 890",merchant:"SURESH V"},
+  {date:"2026-04-21",bank:"SBI Credit Card",cat:"Food & Dining",amt:24,type:"CC Spend",acc:"SBI CC 8706",merchant:"AlMinar Briyani"},
+  {date:"2026-04-21",bank:"ICICI Bank",cat:"Personal Transfer",amt:69,type:"Debit",acc:"ICICI 890",merchant:"Mariya"},
+  {date:"2026-04-23",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"MUTHUMARI A"},
+  {date:"2026-04-23",bank:"SBI Credit Card",cat:"Shopping",amt:4599,type:"CC Spend",acc:"SBI CC 8706",merchant:"LENSKART"},
+  {date:"2026-04-24",bank:"ICICI Bank",cat:"Personal Transfer",amt:100,type:"Debit",acc:"ICICI 890",merchant:"PALANIVEL A"},
+  {date:"2026-04-29",bank:"ICICI Bank",cat:"Personal Receipt",amt:3350,type:"Credit",acc:"ICICI 890",merchant:"SARAVANAN PERIY"},
+  {date:"2026-04-30",bank:"ICICI Credit Card",cat:"Quick Commerce",amt:472,type:"CC Spend",acc:"ICICI CC 2002",merchant:"ZEPTO MARKETPLA"},
+  {date:"2026-04-30",bank:"ICICI Bank",cat:"Salary",amt:54832,type:"Credit",acc:"ICICI 890",merchant:"Salary Credit"},
+  {date:"2026-04-30",bank:"ICICI Bank",cat:"CC Bill Payment",amt:13954,type:"Debit",acc:"ICICI 890",merchant:"CRED Club"},
+  {date:"2026-04-30",bank:"ICICI Bank",cat:"Personal Receipt",amt:840,type:"Credit",acc:"ICICI 890",merchant:"KARTHIKG"},
+  {date:"2026-04-30",bank:"ICICI Bank",cat:"Personal Transfer",amt:1500,type:"Debit",acc:"ICICI 890",merchant:"SANGEETHA M"},
+  // May
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:580,type:"Debit",acc:"ICICI 890",merchant:"SHAUNMUGA MOORT"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Investments",amt:1000,type:"Debit",acc:"ICICI 890",merchant:"ICCL GROWW AUTO"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:100,type:"Debit",acc:"ICICI 890",merchant:"THIRUMANISELVAN"},
+  {date:"2026-05-01",bank:"SBI Credit Card",cat:"CC Bill Payment",amt:23041,type:"Transfer",acc:"SBI CC 8706",merchant:"BBPS Payment"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:1900,type:"Credit",acc:"ICICI 890",merchant:"JOSHUA RAJ PETE"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:5000,type:"Credit",acc:"ICICI 890",merchant:"SURESH V"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Receipt",amt:2610.52,type:"Credit",acc:"ICICI 890",merchant:"IMPS Credit"},
+  {date:"2026-05-01",bank:"ICICI Bank",cat:"Personal Transfer",amt:500,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-05-02",bank:"ICICI Bank",cat:"Personal Receipt",amt:1500,type:"Credit",acc:"ICICI 890",merchant:"SANGEETHA M"},
+  {date:"2026-05-02",bank:"SBI Credit Card",cat:"Food & Dining",amt:100,type:"CC Spend",acc:"SBI CC 8706",merchant:"SUMITHRAPALANI"},
+  {date:"2026-05-02",bank:"SBI Credit Card",cat:"Food & Dining",amt:40,type:"CC Spend",acc:"SBI CC 8706",merchant:"MEENAKANNAN"},
+  {date:"2026-05-03",bank:"ICICI Bank",cat:"Personal Transfer",amt:1,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-05-03",bank:"ICICI Bank",cat:"Personal Receipt",amt:1,type:"Credit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-05-05",bank:"ICICI Bank",cat:"Personal Transfer",amt:2500,type:"Debit",acc:"ICICI 890",merchant:"arumugam dhanam"},
+  {date:"2026-05-05",bank:"ICICI Bank",cat:"Personal Receipt",amt:1,type:"Credit",acc:"ICICI 890",merchant:"IMPS Credit"},
+  {date:"2026-05-05",bank:"ICICI Bank",cat:"Personal Transfer",amt:17000,type:"Debit",acc:"ICICI 890",merchant:"Mr Kalyani Kann"},
+  {date:"2026-05-06",bank:"ICICI Bank",cat:"Liquor",amt:480,type:"Debit",acc:"ICICI 890",merchant:"TASMAC SHOP NO"},
+  {date:"2026-05-08",bank:"ICICI Bank",cat:"Personal Transfer",amt:20,type:"Debit",acc:"ICICI 890",merchant:"BALAKRISHNAN TY"},
+  {date:"2026-05-09",bank:"ICICI Credit Card",cat:"Insurance",amt:2172.19,type:"CC Spend",acc:"ICICI CC 2002",merchant:"POLICYBAZAAR"},
+  {date:"2026-05-10",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"AJITHKUMAR K"},
+  {date:"2026-05-10",bank:"ICICI Bank",cat:"Personal Transfer",amt:3982.50,type:"Debit",acc:"ICICI 890",merchant:"MyGate"},
+  {date:"2026-05-12",bank:"Axis Credit Card",cat:"Uncategorized",amt:2,type:"CC Spend",acc:"Axis CC 4239",merchant:"MICROSOFTBU"},
+  {date:"2026-05-14",bank:"ICICI Bank",cat:"Personal Transfer",amt:310,type:"Debit",acc:"ICICI 890",merchant:"PREMKUMAR G"},
+  {date:"2026-05-14",bank:"ICICI Bank",cat:"Personal Transfer",amt:175,type:"Debit",acc:"ICICI 890",merchant:"M VIGNESH"},
+  {date:"2026-05-14",bank:"ICICI Bank",cat:"Personal Receipt",amt:100,type:"Credit",acc:"ICICI 890",merchant:"BRADEEP KARPAGE"},
+  {date:"2026-05-15",bank:"ICICI Bank",cat:"Personal Transfer",amt:71000,type:"Debit",acc:"ICICI 890",merchant:"Rajkumar Raman"},
+  {date:"2026-05-16",bank:"ICICI Bank",cat:"Personal Transfer",amt:93,type:"Debit",acc:"ICICI 890",merchant:"itzmeanilreddy"},
+  {date:"2026-05-16",bank:"ICICI Bank",cat:"Personal Transfer",amt:360,type:"Debit",acc:"ICICI 890",merchant:"Mr N PERUMAL"},
+  {date:"2026-05-16",bank:"ICICI Bank",cat:"Personal Transfer",amt:40,type:"Debit",acc:"ICICI 890",merchant:"KABILESH AKILAN"},
+  {date:"2026-05-22",bank:"ICICI Bank",cat:"Personal Transfer",amt:125,type:"Debit",acc:"ICICI 890",merchant:"itzmeanilreddy"},
+  {date:"2026-05-22",bank:"ICICI Bank",cat:"Personal Transfer",amt:320,type:"Debit",acc:"ICICI 890",merchant:"svyoga1986"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Utilities",amt:1800,type:"Debit",acc:"ICICI 890",merchant:"DEEPAM GAS LINK"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Personal Transfer",amt:1000,type:"Debit",acc:"ICICI 890",merchant:"CHANDRAKUMAR K"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Food & Dining",amt:75,type:"Debit",acc:"ICICI 890",merchant:"SUMITHRA PALANI"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Personal Transfer",amt:299,type:"Debit",acc:"ICICI 890",merchant:"Dreamplug Servi"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Personal Transfer",amt:90,type:"Debit",acc:"ICICI 890",merchant:"Mariya"},
+  {date:"2026-05-23",bank:"ICICI Bank",cat:"Personal Transfer",amt:2000,type:"Debit",acc:"ICICI 890",merchant:"DHANALAKSHMI A"},
+  {date:"2026-05-24",bank:"ICICI Bank",cat:"Personal Transfer",amt:1000,type:"Debit",acc:"ICICI 890",merchant:"arumugam dhanam"},
+  {date:"2026-05-24",bank:"ICICI Bank",cat:"Personal Receipt",amt:2000,type:"Credit",acc:"ICICI 890",merchant:"S SANTHI"},
+  {date:"2026-05-27",bank:"ICICI Bank",cat:"Personal Transfer",amt:45,type:"Debit",acc:"ICICI 890",merchant:"Mageshwari Sath"},
+  {date:"2026-05-28",bank:"ICICI Bank",cat:"Personal Transfer",amt:500,type:"Debit",acc:"ICICI 890",merchant:"Ms KRUPA NS"},
+  {date:"2026-05-29",bank:"ICICI Bank",cat:"Personal Transfer",amt:99,type:"Debit",acc:"ICICI 890",merchant:"IBRAHIM B"},
+  {date:"2026-05-30",bank:"SBI Credit Card",cat:"Uncategorized",amt:1271,type:"CC Spend",acc:"SBI CC 8706",merchant:"NAMOKKARBYKEZONE"},
+  {date:"2026-05-30",bank:"ICICI Bank",cat:"CC Bill Payment",amt:11205,type:"Debit",acc:"ICICI 890",merchant:"CRED Club"},
+  {date:"2026-05-30",bank:"ICICI Bank",cat:"Personal Transfer",amt:500,type:"Debit",acc:"ICICI 890",merchant:"SURABHI BALAJI"},
+  {date:"2026-05-31",bank:"SBI Credit Card",cat:"Uncategorized",amt:873.74,type:"CC Spend",acc:"SBI CC 8706",merchant:"RORAHMARTLLP"},
+  {date:"2026-05-31",bank:"ICICI Bank",cat:"Personal Transfer",amt:600,type:"Debit",acc:"ICICI 890",merchant:"SURYA VADIVALAG"},
+  // June
+  {date:"2026-06-03",bank:"ICICI Bank",cat:"Personal Transfer",amt:270,type:"Debit",acc:"ICICI 890",merchant:"KABILESH AKILAN"},
+  {date:"2026-06-03",bank:"ICICI Bank",cat:"Personal Receipt",amt:4000,type:"Credit",acc:"ICICI 890",merchant:"KABILESH AKILAN"},
+  {date:"2026-06-04",bank:"ICICI Bank",cat:"Personal Receipt",amt:121,type:"Credit",acc:"ICICI 890",merchant:"KABILESH AKILAN"},
+  {date:"2026-06-05",bank:"ICICI Bank",cat:"Personal Receipt",amt:500,type:"Credit",acc:"ICICI 890",merchant:"SURABHI BALAJI"},
+  {date:"2026-06-07",bank:"ICICI Bank",cat:"CC Bill Payment",amt:17648,type:"Debit",acc:"ICICI 890",merchant:"CRED Club"},
+  {date:"2026-06-09",bank:"ICICI Credit Card",cat:"Insurance",amt:2555.52,type:"CC Spend",acc:"ICICI CC 2002",merchant:"POLICYBAZAAR"},
+  {date:"2026-06-09",bank:"ICICI Bank",cat:"Personal Transfer",amt:100,type:"Debit",acc:"ICICI 890",merchant:"Mr Dharmaraj"},
+  {date:"2026-06-10",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"Joy Technologie"},
+  {date:"2026-06-13",bank:"ICICI Bank",cat:"Personal Transfer",amt:50,type:"Debit",acc:"ICICI 890",merchant:"Manikandan M"},
+  {date:"2026-06-13",bank:"ICICI Bank",cat:"Personal Transfer",amt:10,type:"Debit",acc:"ICICI 890",merchant:"Sri Abirami N"},
+];
+
+// ============================================================
+// HELPERS
+// ============================================================
+const fmt = n => '₹' + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:0,maximumFractionDigits:0});
+const fmtFull = n => '₹' + Math.abs(n).toLocaleString('en-IN', {minimumFractionDigits:2,maximumFractionDigits:2});
+
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MONTHS_FULL = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+function getMonth(d){ const dt=new Date(d); return dt.getMonth(); }
+function getYear(d){ const dt=new Date(d); return dt.getFullYear(); }
+
+const isDebit = r => ['Debit','CC Spend','Transfer'].includes(r.type) && !['Credit','Refund'].includes(r.type);
+const isCredit = r => ['Credit'].includes(r.type);
+
+const CATEGORY_META = {
+  'Food & Dining':   {icon:'🍔',color:'#ff6b6b'},
+  'Shopping':        {icon:'🛍️',color:'#6c63ff'},
+  'Personal Transfer':{icon:'↔️',color:'#7878a0'},
+  'Personal Receipt':{icon:'📥',color:'#43e97b'},
+  'Investments':     {icon:'📈',color:'#43e97b'},
+  'Insurance':       {icon:'🛡️',color:'#4ecdc4'},
+  'Groceries':       {icon:'🥬',color:'#a8e063'},
+  'Utilities':       {icon:'💡',color:'#ffd93d'},
+  'Liquor':          {icon:'🍺',color:'#ff9a3c'},
+  'CC Bill Payment': {icon:'💳',color:'#9c88ff'},
+  'Salary':          {icon:'💰',color:'#43e97b'},
+  'Quick Commerce':  {icon:'⚡',color:'#ffd93d'},
+  'Travel':          {icon:'✈️',color:'#74b9ff'},
+  'Tech/Services':   {icon:'💻',color:'#a29bfe'},
+  'Bank Charges':    {icon:'🏦',color:'#fd79a8'},
+  'Transfer':        {icon:'🔄',color:'#636e72'},
+  'Refund':          {icon:'↩️',color:'#00b894'},
+  'Uncategorized':   {icon:'❓',color:'#b2bec3'},
+};
+function catMeta(c){ return CATEGORY_META[c] || {icon:'📌',color:'#636e72'}; }
+
+// Available months
+const allMonths = [...new Set(RAW.map(r=>r.date.slice(0,7)))].sort();
+let selectedMonth = allMonths[allMonths.length-1]; // default = latest
+
+function filterByMonth(month){ return RAW.filter(r=>r.date.startsWith(month)); }
+
+function calcStats(rows){
+  const debits = rows.filter(r=>isDebit(r));
+  const credits = rows.filter(r=>isCredit(r));
+  const totalOut = debits.reduce((s,r)=>s+r.amt,0);
+  const totalIn  = credits.reduce((s,r)=>s+r.amt,0);
+  return {debits,credits,totalOut,totalIn,net:totalIn-totalOut,count:rows.length};
+}
+
+// Category breakdown (debits only, excluding internal transfers & cc payments)
+function catBreakdown(rows){
+  const skip = ['Personal Transfer','Personal Receipt','CC Bill Payment','Transfer','Refund','Salary','Investments'];
+  const map = {};
+  rows.filter(r=>isDebit(r)&&!skip.includes(r.cat)).forEach(r=>{
+    map[r.cat]=(map[r.cat]||0)+r.amt;
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]);
+}
+
+// Monthly summary across all months
+function monthlySummary(){
+  return allMonths.map(m=>{
+    const rows=filterByMonth(m);
+    const s=calcStats(rows);
+    return {month:m,in:s.totalIn,out:s.totalOut};
+  });
+}
+
+// ============================================================
+// CHARTS registry (to destroy before redraw)
+// ============================================================
+const charts = {};
+function destroyChart(id){
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+}
+
+// ============================================================
+// PAGE: HOME
+// ============================================================
+function renderHome(){
+  const rows = filterByMonth(selectedMonth);
+  const s = calcStats(rows);
+  const recent = [...rows].reverse().slice(0,5);
+  const ms = monthlySummary();
+  const mLabel = MONTHS_FULL[parseInt(selectedMonth.slice(5))-1]+' '+selectedMonth.slice(0,4);
+
+  let tabsHtml = allMonths.map(m=>{
+    const lbl = MONTHS[parseInt(m.slice(5))-1]+' '+m.slice(2,4);
+    return `<div class="month-tab ${m===selectedMonth?'active':''}" onclick="selectMonth('${m}')">${lbl}</div>`;
+  }).join('');
+
+  document.getElementById('home-content').innerHTML = `
+    <div class="month-tabs">${tabsHtml}</div>
+
+    <div class="hero-card">
+      <div class="hero-label">Net Balance · ${mLabel}</div>
+      <div class="hero-amount">${fmtFull(s.net)}</div>
+      <div class="hero-sub">${s.count} transactions</div>
+      <div class="hero-row">
+        <div class="hero-stat">
+          <div class="hero-stat-label">Money In</div>
+          <div class="hero-stat-val income-val">${fmt(s.totalIn)}</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Money Out</div>
+          <div class="hero-stat-val expense-val">${fmt(s.totalOut)}</div>
+        </div>
+        <div class="hero-stat">
+          <div class="hero-stat-label">Txns</div>
+          <div class="hero-stat-val">${s.debits.length+s.credits.length}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Monthly Trend</div>
+      <div class="chart-wrap"><canvas id="chart-trend"></canvas></div>
+    </div>
+
+    <div class="section-hdr">
+      <div class="section-title">Recent Transactions</div>
+      <div class="see-all" onclick="switchPage('txn',document.querySelectorAll('.nav-item')[1])">See all →</div>
+    </div>
+    <div class="card">
+      ${recent.map(r=>txnItemHtml(r)).join('')}
+    </div>
+  `;
+
+  // Trend chart
+  destroyChart('trend');
+  const ctx = document.getElementById('chart-trend').getContext('2d');
+  charts['trend'] = new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: ms.map(m=>MONTHS[parseInt(m.month.slice(5))-1]),
+      datasets:[
+        {label:'In',data:ms.map(m=>m.in),backgroundColor:'rgba(67,233,123,0.7)',borderRadius:6},
+        {label:'Out',data:ms.map(m=>m.out),backgroundColor:'rgba(255,107,107,0.7)',borderRadius:6},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:'#aaa',font:{size:11}}}},
+      scales:{
+        x:{ticks:{color:'#666',font:{size:10}},grid:{color:'rgba(255,255,255,0.05)'}},
+        y:{ticks:{color:'#666',font:{size:10},callback:v=>'₹'+Math.round(v/1000)+'k'},grid:{color:'rgba(255,255,255,0.05)'}}
+      }
+    }
+  });
+}
+
+// ============================================================
+// PAGE: TRANSACTIONS
+// ============================================================
+let txnFilter = 'All';
+function renderTxn(){
+  const rows = filterByMonth(selectedMonth);
+  const types = ['All','Debit','Credit','CC Spend'];
+  let filtered = rows;
+  if(txnFilter==='Debit') filtered=rows.filter(r=>r.type==='Debit');
+  else if(txnFilter==='Credit') filtered=rows.filter(r=>r.type==='Credit');
+  else if(txnFilter==='CC Spend') filtered=rows.filter(r=>r.type==='CC Spend');
+  filtered = [...filtered].reverse();
+
+  const mLabel = MONTHS_FULL[parseInt(selectedMonth.slice(5))-1];
+
+  document.getElementById('txn-content').innerHTML = `
+    <div style="padding:10px 0 4px;font-size:17px;font-weight:700;">${mLabel} Transactions</div>
+    <div class="month-tabs" style="margin-top:8px;">
+      ${types.map(t=>`<div class="month-tab ${t===txnFilter?'active':''}" onclick="setTxnFilter('${t}')">${t}</div>`).join('')}
+    </div>
+    <div class="card" style="padding:4px 14px;">
+      ${filtered.length===0?'<div style="padding:20px;text-align:center;color:var(--muted)">No transactions</div>':filtered.map(r=>txnItemHtml(r)).join('')}
+    </div>
+  `;
+}
+
+function setTxnFilter(f){ txnFilter=f; renderTxn(); }
+
+// ============================================================
+// PAGE: ANALYTICS
+// ============================================================
+function renderAnalytics(){
+  const rows = filterByMonth(selectedMonth);
+  const breakdown = catBreakdown(rows);
+  const total = breakdown.reduce((s,c)=>s+c[1],0);
+  const mLabel = MONTHS_FULL[parseInt(selectedMonth.slice(5))-1];
+
+  document.getElementById('analytics-content').innerHTML = `
+    <div style="padding:10px 0 4px;font-size:17px;font-weight:700;">${mLabel} Spending</div>
+
+    <div class="card">
+      <div class="card-label">By Category</div>
+      <div class="chart-wrap-sm"><canvas id="chart-donut"></canvas></div>
+    </div>
+
+    <div class="card">
+      <div class="card-label">Category Breakdown</div>
+      ${breakdown.map(([cat,amt])=>{
+        const m=catMeta(cat);
+        const pct=total>0?Math.round(amt/total*100):0;
+        return `
+        <div class="cat-row">
+          <div class="cat-row-icon">${m.icon}</div>
+          <div class="cat-row-info">
+            <div class="cat-row-name">${cat}</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${m.color}"></div></div>
+          </div>
+          <div class="cat-row-amt" style="color:${m.color}">${fmt(amt)}<br><span style="font-size:10px;color:var(--muted)">${pct}%</span></div>
+        </div>`;
+      }).join('')}
+    </div>
+
+    <div class="card">
+      <div class="card-label">By Account/Card</div>
+      ${renderAccountBreakdown(rows)}
+    </div>
+  `;
+
+  // Donut
+  destroyChart('donut');
+  if(breakdown.length>0){
+    const ctx2=document.getElementById('chart-donut').getContext('2d');
+    charts['donut']=new Chart(ctx2,{
+      type:'doughnut',
+      data:{
+        labels:breakdown.map(c=>c[0]),
+        datasets:[{
+          data:breakdown.map(c=>c[1]),
+          backgroundColor:breakdown.map(c=>catMeta(c[0]).color),
+          borderWidth:0,hoverOffset:6
+        }]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,cutout:'65%',
+        plugins:{
+          legend:{position:'right',labels:{color:'#aaa',font:{size:10},boxWidth:10,padding:8}}
+        }
+      }
+    });
+  }
+}
+
+function renderAccountBreakdown(rows){
+  const map={};
+  rows.filter(r=>isDebit(r)).forEach(r=>{
+    map[r.acc]=(map[r.acc]||0)+r.amt;
+  });
+  return Object.entries(map).sort((a,b)=>b[1]-a[1]).map(([acc,amt])=>`
+    <div class="account-chip">
+      <div class="account-icon">🏦</div>
+      <div>
+        <div class="account-name">${acc}</div>
+        <div class="account-num">Debit/Spend</div>
+      </div>
+      <div class="account-amt expense-val">${fmt(amt)}</div>
+    </div>
+  `).join('');
+}
+
+// ============================================================
+// PAGE: INSIGHTS
+// ============================================================
+function renderInsights(){
+  const rows = filterByMonth(selectedMonth);
+  const s = calcStats(rows);
+  const breakdown = catBreakdown(rows);
+  const topCat = breakdown[0];
+  const allRows_prev = filterByMonth(allMonths[allMonths.indexOf(selectedMonth)-1]||'');
+  const prev = calcStats(allRows_prev);
+
+  // Find biggest single transaction
+  const bigTxn = [...rows].filter(r=>isDebit(r)).sort((a,b)=>b.amt-a.amt)[0];
+  // Savings rate
+  const salary = rows.filter(r=>r.cat==='Salary').reduce((s,r)=>s+r.amt,0);
+  const savingsRate = salary>0?Math.round((1-(s.totalOut/salary))*100):null;
+  // Liquor spend
+  const liquorAmt = rows.filter(r=>r.cat==='Liquor').reduce((s,r)=>s+r.amt,0);
+  // Investment
+  const investAmt = rows.filter(r=>r.cat==='Investments').reduce((s,r)=>s+r.amt,0);
+
+  const insights = [];
+
+  if(topCat) insights.push({
+    icon: catMeta(topCat[0]).icon,
+    title:`Top spend: ${topCat[0]}`,
+    desc:`You spent ${fmt(topCat[1])} on ${topCat[0]} this month — your largest category.`
+  });
+
+  if(savingsRate!==null) insights.push({
+    icon: savingsRate>=20?'🎯':'⚠️',
+    title:`Savings rate: ${savingsRate}%`,
+    desc: savingsRate>=20
+      ? `Great job! You saved ${savingsRate}% of your salary. Aim for 30%+ for financial freedom.`
+      : `Your savings rate is low. Try to save at least 20% of your ₹${fmt(salary)} salary.`
+  });
+
+  if(bigTxn) insights.push({
+    icon:'💸',
+    title:`Biggest expense: ${fmt(bigTxn.amt)}`,
+    desc:`Your largest single transaction was ${fmt(bigTxn.amt)} to ${bigTxn.merchant} (${bigTxn.cat}).`
+  });
+
+  if(liquorAmt>0) insights.push({
+    icon:'🍺',
+    title:`Alcohol spend: ${fmt(liquorAmt)}`,
+    desc:`You spent ${fmt(liquorAmt)} on alcohol this month. Consider if this aligns with your budget goals.`
+  });
+
+  if(investAmt>0) insights.push({
+    icon:'📈',
+    title:`Invested: ${fmt(investAmt)}`,
+    desc:`Great! You invested ${fmt(investAmt)} this month via Groww and similar platforms.`
+  });
+
+  if(s.totalOut>s.totalIn && s.totalIn>0) insights.push({
+    icon:'🔴',
+    title:'Spending more than you earn',
+    desc:`This month you spent ${fmt(s.totalOut-s.totalIn)} more than you received. Review your expenses.`
+  });
+
+  const mLabel = MONTHS_FULL[parseInt(selectedMonth.slice(5))-1];
+  document.getElementById('insights-content').innerHTML = `
+    <div style="padding:10px 0 4px;font-size:17px;font-weight:700;">${mLabel} Insights</div>
+
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-icon">📅</div>
+        <div class="stat-val">${s.debits.length}</div>
+        <div class="stat-lbl">Payments</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📥</div>
+        <div class="stat-val">${s.credits.length}</div>
+        <div class="stat-lbl">Receipts</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">📊</div>
+        <div class="stat-val">${breakdown.length}</div>
+        <div class="stat-lbl">Categories</div>
+      </div>
+    </div>
+
+    ${insights.map(i=>`
+      <div class="insight">
+        <div class="insight-icon">${i.icon}</div>
+        <div>
+          <div class="insight-title">${i.title}</div>
+          <div class="insight-desc">${i.desc}</div>
+        </div>
+      </div>
+    `).join('')}
+
+    <div class="card" style="margin-top:4px">
+      <div class="card-label">All Accounts</div>
+      <div class="account-chip">
+        <div class="account-icon">🏦</div>
+        <div><div class="account-name">ICICI Bank XX890</div><div class="account-num">Primary Savings</div></div>
+      </div>
+      <div class="account-chip">
+        <div class="account-icon">💳</div>
+        <div><div class="account-name">SBI Credit Card XX8706</div><div class="account-num">Credit Card</div></div>
+      </div>
+      <div class="account-chip">
+        <div class="account-icon">💳</div>
+        <div><div class="account-name">ICICI Credit Card XX2002</div><div class="account-num">Credit Card</div></div>
+      </div>
+      <div class="account-chip">
+        <div class="account-icon">💳</div>
+        <div><div class="account-name">Axis Credit Card XX4239</div><div class="account-num">Credit Card</div></div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// SHARED: Transaction Item HTML
+// ============================================================
+function txnItemHtml(r){
+  const m = catMeta(r.cat);
+  const isIncoming = r.type==='Credit';
+  const amtColor = isIncoming ? 'var(--green)' : 'var(--red)';
+  const amtPrefix = isIncoming ? '+' : '-';
+  const dt = new Date(r.date);
+  const dateStr = dt.getDate()+' '+MONTHS[dt.getMonth()];
+  return `
+    <div class="txn-item">
+      <div class="txn-icon" style="background:${m.color}22">${m.icon}</div>
+      <div class="txn-info">
+        <div class="txn-merchant">${r.merchant}</div>
+        <div class="txn-meta">
+          <span class="cat-pill" style="background:${m.color}22;color:${m.color}">${r.cat}</span>
+          &nbsp;${r.acc}
+        </div>
+      </div>
+      <div>
+        <div class="txn-amount" style="color:${amtColor}">${amtPrefix}${fmt(r.amt)}</div>
+        <div class="txn-date">${dateStr}</div>
+      </div>
+    </div>
+  `;
+}
+
+// ============================================================
+// NAV & MONTH SELECTION
+// ============================================================
+let currentPage = 'home';
+function switchPage(page, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+page).classList.add('active');
+  el.classList.add('active');
+  currentPage = page;
+  renderPage(page);
+  window.scrollTo(0,0);
+}
+
+function selectMonth(m){
+  selectedMonth=m;
+  renderAll();
+}
+
+function renderPage(page){
+  if(page==='home') renderHome();
+  else if(page==='txn') renderTxn();
+  else if(page==='analytics') renderAnalytics();
+  else if(page==='insights') renderInsights();
+}
+
+function renderAll(){
+  renderPage(currentPage);
+}
+
+// Init
+renderHome();
+</script>
+</body>
+</html>
